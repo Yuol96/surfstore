@@ -2,11 +2,16 @@ from xmlrpc.server import SimpleXMLRPCServer
 from xmlrpc.server import SimpleXMLRPCRequestHandler
 from socketserver import ThreadingMixIn
 
+import hashlib
+
 class RequestHandler(SimpleXMLRPCRequestHandler):
     rpc_paths = ('/RPC2',)
 
 class threadedXMLRPCServer(ThreadingMixIn, SimpleXMLRPCServer):
     pass
+
+store = dict()  # hashvalue -> binary
+meta = dict()  # filename -> [version, [hashval1, hashval2, hashval3]]
 
 # A simple ping, returns true
 def ping():
@@ -19,7 +24,7 @@ def getblock(h):
     """Gets a block"""
     print("GetBlock(" + h + ")")
 
-    blockData = bytes(4)
+    blockData = store[h]
     return blockData
 
 # Puts a block
@@ -27,6 +32,8 @@ def putblock(b):
     """Puts a block"""
     print("PutBlock()")
 
+    h = hashlib.sha256(b).hexdigest()
+    store[h] = b
     return True
 
 # Given a list of blocks, return the subset that are on this server
@@ -34,7 +41,7 @@ def hasblocks(blocklist):
     """Determines which blocks are on this server"""
     print("HasBlocks()")
 
-    return blocklist
+    return [h for h in blocklist if h in store]
 
 # Retrieves the server's FileInfoMap
 def getfileinfomap():
@@ -43,25 +50,34 @@ def getfileinfomap():
 
     result = {}
 
-    # file1.dat
-    file1info = []
-    file1info.append(3) // version
+    # # file1.dat
+    # file1info = []
+    # file1info.append(3) // version
 
-    file1blocks = []
-    file1blocks.append("h1")
-    file1blocks.append("h2")
-    file1blocks.append("h3")
+    # file1blocks = []
+    # file1blocks.append("h1")
+    # file1blocks.append("h2")
+    # file1blocks.append("h3")
 
-    file1info.append(file1blocks)
+    # file1info.append(file1blocks)
     
-    result["file1.dat"] = file1info
+    # result["file1.dat"] = file1info
 
-    return result
+    return meta
 
 # Update a file's fileinfo entry
 def updatefile(filename, version, blocklist):
     """Updates a file's fileinfo entry"""
     print("UpdateFile()")
+
+    finfo = meta.get(filename, [0, []]) # Check if the initiation of a new file is correct!
+
+
+    if finfo[0]+1 != version:
+        return False
+    
+    finfo[0] = version
+    finfo[1] = blocklist
 
     return True
 
