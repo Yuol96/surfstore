@@ -31,8 +31,8 @@ def getblock(h):
 def putblock(b):
     """Puts a block"""
     print("PutBlock()")
-
-    h = hashlib.sha256(b).hexdigest()
+    # b is a 'xml.client.Binary' object, not a bytes object
+    h = hashlib.sha256(b.data).hexdigest()
     store[h] = b
     return True
 
@@ -72,12 +72,13 @@ def updatefile(filename, version, blocklist):
 
     finfo = meta.get(filename, [0, []]) # Check if the initiation of a new file is correct!
 
-
     if finfo[0]+1 != version:
         return False
     
     finfo[0] = version
     finfo[1] = blocklist
+
+    meta[filename] = finfo
 
     return True
 
