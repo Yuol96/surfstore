@@ -38,9 +38,9 @@ def parseIndexFile(basedir: str):
 	dct = {}
 
 	if not fpath.exists():
-		# create index.txt file
-		with fpath.open('w') as f:
-			pass
+		# # create index.txt file
+		# with fpath.open('w') as f:
+		# 	pass
 		return {}
 
 	with fpath.open() as f:
@@ -67,10 +67,10 @@ def download(client, basedir, fname, hashlist):
 		# the file would be missing on this client. Thus, we need `missing_ok=True`
 		(basedir / fname).unlink(missing_ok=True) 
 	else:
-		with (basedir / fname).open('w') as hd:
+		with (basedir / fname).open('wb') as hd:
 			for h in hashlist:
 				b = client.surfstore.getblock(h)
-				hd.write(b)
+				hd.write(b.data)
 
 
 def mergeCloudToLocal(client, localIndex, remoteIndex, basedir):
