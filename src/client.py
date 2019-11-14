@@ -65,7 +65,8 @@ def download(client, basedir, fname, hashlist):
 		# File was deleted on the remote side.
 		# When a new file was created and then deleted on the remote side by another client, 
 		# the file would be missing on this client. Thus, we need `missing_ok=True`
-		(basedir / fname).unlink(missing_ok=True) 
+		if (basedir / fname).exists():
+			(basedir / fname).unlink() 
 	else:
 		with (basedir / fname).open('wb') as hd:
 			for h in hashlist:
