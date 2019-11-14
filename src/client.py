@@ -93,7 +93,7 @@ def isSame(hashlist1, hashlist2) -> bool:
 			return False
 	return True
 
-def upload(client, fname, version, hashlist, hash2block, localIndex):
+def upload(client, fname, version, hashlist, hash2block, localIndex, basedir):
 	"""
 	Upload the blocks corresponding to this file to the server, then update the server with the new FileInfo.
 	- If that update is successful, then the client should update its local index.
@@ -102,9 +102,11 @@ def upload(client, fname, version, hashlist, hash2block, localIndex):
 	* Corner Case: hashlist == [0] * 
 	"""
 	if not (len(hashlist) == 1 and hashlist[0] == 0):
+		inHashlist = set(client.surfstore.hasblocks(hashlist))
 		for h in hashlist:
-			b = hash2block[h]
-			client.surfstore.putblock(b)
+			if h not in inHashlist:
+				b = hash2block[h]
+				client.surfstore.putblock(b)
 	
 	isUpdated = client.surfstore.updatefile(fname, version, hashlist)
 	if isUpdated:
@@ -115,20 +117,21 @@ def upload(client, fname, version, hashlist, hash2block, localIndex):
 		download(client, basedir, fname, newHashlist)
 		localIndex[fname] = [newVersion, newHashlist]
 
-def mergeLocalToCloud(client, localIndex, basedir, blocksize):
+def mergeLocalToCloud(client, localIndex, basedir, blocksize, remoteIndex):
 	fname2hashlist, hash2block = scandir(basedir, blocksize)
 	# Handle files that are modified or created
 	for fname in fname2hashlist:
 		lcVersion, lcHashlist = localIndex.get(fname, [0, []])
 		hashlist = fname2hashlist[fname]
 		if not isSame(hashlist, lcHashlist):
-			upload(client, fname, lcVersion+1, hashlist, hash2block, localIndex)
+			upload(client, fname, lcVersion+1, hashlist, hash2block, localIndex, basedir)
 
 	# Handle files that are deleted
 	deletedFnames = set(localIndex.keys()) - set(fname2hashlist.keys())
 	for fname in deletedFnames:
-		lcVersion, lcHashlist = localIndex[fname]
-		upload(client, fname, lcVersion+1, [0], hash2block, localIndex)
+		if remoteIndex[fname][1] != [0]:
+			lcVersion, lcHashlist = localIndex[fname]
+			upload(client, fname, lcVersion+1, [0], hash2block, localIndex, basedir)
 
 def dumpLocalIndex(localIndex, basedir):
 	basedir = Path(basedir)
@@ -142,7 +145,7 @@ def synchronize(client, basedir: str, blocksize: int):
 	remoteIndex = client.surfstore.getfileinfomap()
 
 	mergeCloudToLocal(client, localIndex, remoteIndex, basedir)
-	mergeLocalToCloud(client, localIndex, basedir, blocksize)
+	mergeLocalToCloud(client, localIndex, basedir, blocksize, remoteIndex)
 	dumpLocalIndex(localIndex, basedir)
 
 if __name__ == "__main__":
